@@ -1,7 +1,7 @@
 import click
 import torch
 from model import MyAwesomeModel
-
+import tqdm
 from data import mnist
 
 
@@ -18,10 +18,23 @@ def train(lr):
     print("Training day and night")
     print(lr)
 
-    # TODO: Implement training loop here
     model = MyAwesomeModel()
     train_set, _ = mnist()
+    trainloader = torch.utils.data.DataLoader(train_set, batch_size=64, shuffle=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.CrossEntropyLoss()
 
+    for epoch in range(10):
+        train_loss = 0
+        for images, labels in trainloader:
+            optimizer.zero_grad()
+            output = model(images)
+            loss = criterion(output, labels)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+        print(f"Epoch {epoch} - Training loss: {train_loss/len(trainloader)}")
+    torch.save(model, "model.pt")
 
 @click.command()
 @click.argument("model_checkpoint")
@@ -30,9 +43,17 @@ def evaluate(model_checkpoint):
     print("Evaluating like my life dependends on it")
     print(model_checkpoint)
 
-    # TODO: Implement evaluation logic here
     model = torch.load(model_checkpoint)
     _, test_set = mnist()
+    testloader = torch.utils.data.DataLoader(test_set, batch_size=64, shuffle=False)
+    accuracy = 0
+    with torch.no_grad():
+        for images, labels in testloader:
+            output = model(images)
+            _, predicted = torch.max(output.data, 1)
+            accuracy += (predicted == labels).sum().item()
+    print(f"Accuracy: {accuracy/len(test_set)}")
+
 
 
 cli.add_command(train)
